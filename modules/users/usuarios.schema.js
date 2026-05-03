@@ -27,9 +27,24 @@ const idUsuarioSchema = z.object({
     .positive("El id_usuario debe ser positivo"),
 });
 
+const listUsuariosSchema = z.object({
+    offset: z.coerce
+        .number()
+        .int("El id_usuario debe ser un número entero")
+        .positive("El id_usuario debe ser positivo")
+        .default(0),
+    
+    limit: z.coerce
+        .number()
+        .int("El id_usuario debe ser un número entero")
+        .positive("El id_usuario debe ser positivo")
+        .default(50),
+});
+
 
 module.exports = {
     usuariosCreationSchema,
     usuariosUpdateSchema,
     idUsuarioSchema,
+    listUsuariosSchema,
 };

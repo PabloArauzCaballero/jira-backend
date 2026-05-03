@@ -1,4 +1,4 @@
-const { usuariosUpdateSchema, idUsuarioSchema } = require("./usuarios.schema");
+const { usuariosUpdateSchema, idUsuarioSchema, listUsuariosSchema } = require("./usuarios.schema");
 const UsuariosService = require("./usuarios.service");
 const mainLogger = require("../../logs/logger");
 const logger = mainLogger.child({ module: "UsuariosController" });
@@ -214,7 +214,90 @@ async function deleteUser(req, res) {
   }
 }
 
+async function listUsers(req, res) {
+  const startedAt = Date.now();
+  try{
+    const validationUsers = listUsuariosSchema.safeParse(req.query);
+
+    if(!validationUsers.success){
+      logger.warn(
+        {
+          event: "list_users_validation_failed",
+          ...getRequestMeta(req),
+          durationMs: Date.now() - startedAt,
+          validationErrors: validationUsers.error.flatten(),
+        },
+        "Validación fallida al listar usuarios"
+      );
+
+      return res.status(400).json({
+        success: false,
+        message: "Los campos para enlistar son inválidos.",
+        errors: validationUsers.error.flatten(),
+      });
+    }
+
+    const result = await UsuariosService.listUsers(validationUsers.data);
+
+    if (!result.success) {
+      logger.warn(
+        {
+          event: "list_user_failed",
+          ...getRequestMeta(req),
+          statusCode: result.statusCode || 400,
+          reason: result.message,
+          durationMs: Date.now() - startedAt,
+        },
+        "List user fallido"
+      );
+
+      return res.status(result.statusCode || 400).json({
+        success: false,
+        message: result.message,
+      });
+    }
+
+    logger.info(
+      {
+        event: "list_user_success",
+        ...getRequestMeta(req),
+        durationMs: Date.now() - startedAt,
+      },
+      "List user exitoso"
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Usuarios enlistados correctamente.",
+      user: result.data,
+    });    
+
+  }catch (error){
+    logger.error(
+      {
+        event: "list_user_controller_error",
+        ...getRequestMeta(req),
+        durationMs: Date.now() - startedAt,
+        error: {
+          name: error.name,
+          message: error.message,
+          stack: error.stack,
+        },
+      },
+      "Error interno en UsuariosController.listUsers"
+    );
+
+    return res.status(500).json({
+      success: false,
+      message: "Error interno al listar usuariosS.",
+    });
+  }
+
+
+}
+
 module.exports = {
   updateUser,
   deleteUser,
+  listUsers,
 };

@@ -14,6 +14,8 @@ function toPlainUser(user) {
 }
 
 function removeSensitiveFields(user) {
+  if (!user) return null;
+
   const safeUser = { ...user };
 
   delete safeUser.password;
@@ -107,7 +109,51 @@ async function deleteUser(id_usuario) {
   }
 }
 
+async function listUsers(payload) {
+  try {
+    const result = await UsuariosRepository.listUsers(payload);
+
+    if (!Array.isArray(result)) {
+      return {
+        success: false,
+        statusCode: 500,
+        message: "Error interno: el repositorio no devolvió una lista válida.",
+      };
+    }
+
+    const safeListUsers = result.map((user) =>
+      removeSensitiveFields(toPlainUser(user))
+    );
+
+    return {
+      success: true,
+      statusCode: 200,
+      message: "Usuarios enlistados exitosamente.",
+      data: safeListUsers,
+    };
+  } catch (error) {
+    logger.error(
+      {
+        event: "list_users_error",
+        error: {
+          name: error.name,
+          message: error.message,
+          stack: error.stack,
+        },
+      },
+      "Error en UsuariosService.listUsers"
+    );
+
+    return {
+      success: false,
+      statusCode: 500,
+      message: "Error interno al listar usuarios.",
+    };
+  }
+}
+
 module.exports = {
   updateUser,
   deleteUser,
+  listUsers,
 };
