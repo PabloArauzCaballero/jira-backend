@@ -12,7 +12,6 @@ const usuariosCreationSchema = z.object({
 });
 
 const usuariosUpdateSchema = z.object({
-    id_usuario: z.number().int().safe(),
     nombre: z.string().min(2, "El nombre debe tener al menos 2 caracteres.").optional(),
     email : z.string().email("Formato de correo electrónico inválido.").optional(),
     telefono: z.string().min(7, "El teléfono debe tener al menos 7 caracteres.").optional(),
@@ -22,7 +21,10 @@ const usuariosUpdateSchema = z.object({
 });
 
 const idUsuarioSchema = z.object({
-    id_usuario: z.number().int().safe(),
+  id_usuario: z.coerce
+    .number()
+    .int("El id_usuario debe ser un número entero")
+    .positive("El id_usuario debe ser positivo"),
 });
 
 
