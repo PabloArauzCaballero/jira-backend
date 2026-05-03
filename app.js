@@ -9,7 +9,8 @@ const app = express();
 const cookieParser = require("cookie-parser");
 const rateLimit = require("express-rate-limit");
 const { success } = require("zod");
-
+const modules = require("./modules");
+const {requireAuth} = require("./middlewares/jwtMiddleware")
 
 app.disable("x-powered-by");
 
@@ -84,10 +85,14 @@ app.use(
     })
 );
 
-app.use(express.json({limit: "10mb"}));
+// COOKIES ===================================================================
+app.use(cookieParser());
+
+// BODY PARSERS ===============================================================
+app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
 
-
+// HEALTH CHECK ==============================================================
 app.get("/health", (_req, res) => {
     return res.status(200).json({
         ok: true,
@@ -95,9 +100,63 @@ app.get("/health", (_req, res) => {
     });
 });
 
+// REQUEST HIT LOG ============================================================
 app.use((req, _res, next) => {
-    req.log.info({ method: req.method, url: req.originalUrl }, "REQUEST HIT");
+    req.log.info(
+        { 
+            method: req.method, 
+            url: req.originalUrl 
+        }, 
+        "REQUEST HIT"
+    );
+
     next();
 });
+
+
+// MONTAR MODULOS ============================================================
+for(const moduleObj of modules){
+    const {router, basePath, isPublic} = moduleObj;
+
+    if(!router || !basePath){
+        logger.warn(
+        {
+            event: "module_mount_skipped",
+            basePath,
+            hasRouter: Boolean(router),
+        },
+        "Módulo omitido por configuración incompleta"
+        );
+
+        continue;
+    }
+
+    if(isPublic){
+        app.use(`/api${basePath}`, router);
+
+        logger.info(
+            {
+                event: "module_mounted",
+                basePath,
+                isPublic: true,
+            },
+            "Módulo público montado"
+        );
+
+        continue;
+    }
+
+    app.use(`/api${basePath}`, requireAuth, router);    
+
+    logger.info(
+        {
+            event: "module_mounted",
+            basePath,
+            isPublic: false,
+            middleware: "requireAuth",
+        },
+        "Módulo privado montado con JWT"
+    );
+}
 
 module.exports = app;

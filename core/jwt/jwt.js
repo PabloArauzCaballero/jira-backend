@@ -17,3 +17,8 @@ function generateAccessToken(user) {
 function verifyAccessToken(token) {
     return jwt.verify(token, process.env.JWT_ACCESS_SECRET);
 }
+
+module.exports = {
+    generateAccessToken,
+    verifyAccessToken,    
+}
