@@ -6,6 +6,10 @@ const helmet = require("helmet");
 const comprenssion = require("compression");
 const logger = require("./logs/logger")
 const app = express();
+const cookieParser = require("cookie-parser");
+const rateLimit = require("express-rate-limit");
+const { success } = require("zod");
+
 
 app.disable("x-powered-by");
 
@@ -68,6 +72,18 @@ app.use(
     }),
 );
 
+// RATE LIMITER ================================================================
+app.use(
+    rateLimit({
+        windowMs: 15 * 60 * 1000,
+        max: 100,
+        message: {
+            success: false,
+            message: "Too many requests, please try again later.",
+        }
+    })
+);
+
 app.use(express.json({limit: "10mb"}));
 app.use(express.urlencoded({ extended: true }));
 
@@ -82,10 +98,6 @@ app.get("/health", (_req, res) => {
 app.use((req, _res, next) => {
     req.log.info({ method: req.method, url: req.originalUrl }, "REQUEST HIT");
     next();
-});
-
-app.listen(3000, ()=>{
-    console.log("Servidor escucahdno");
 });
 
 module.exports = app;
