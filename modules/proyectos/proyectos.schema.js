@@ -39,9 +39,7 @@ const proyectoCreationSchema = z
       
       user_id_creacion: positiveIntId("El id del usuario creador"),
       
-      
   })
-  .strict();
 
 const proyectoUpdateSchema = z
   .object({
@@ -60,7 +58,6 @@ const proyectoUpdateSchema = z
 
     user_id_modificacion: optionalPositiveIntId("El id del usuario modificador").optional(),
   })
-  .strict()
   .refine((data) => Object.keys(data).length > 0, {
     message: "Debe enviar al menos un campo para actualizar el proyecto.",
   });
@@ -84,8 +81,7 @@ const miembroCreationSchema = z
         }),
       })
       .optional(),
-  })
-  .strict();
+  });
 
 const miembroUpdateSchema = z
   .object({
@@ -105,7 +101,6 @@ const miembroUpdateSchema = z
       })
       .optional(),
   })
-  .strict()
   .refine((data) => Object.keys(data).length > 0, {
     message: "Debe enviar al menos un campo para actualizar el miembro.",
   });
