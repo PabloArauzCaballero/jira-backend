@@ -5,9 +5,7 @@ const PRIORIDADES = ["BAJA", "MEDIA", "ALTA", "CRITICA"];
 const ESTADOS_TICKET = [
   "PENDIENTE",
   "EN_PROGRESO",
-  "EN_REVISION",
-  "FINALIZADO",
-  "CANCELADO",
+  "COMPLETADO",
 ];
 
 const ESTADOS_REGISTRO = ["ACTIVO", "INACTIVO", "ELIMINADO"];
@@ -96,11 +94,6 @@ const estadoRegistroSchema = z.enum(ESTADOS_REGISTRO, {
   }),
 });
 
-/**
- * Crea el ticket y su primera asignación.
- * En la base, ticket NO tiene id_proyecto ni id_asignado.
- * La relación vive en proyecto_asignacion usando id_proyecto e id_usuario.
- */
 const ticketCreationSchema = z
   .object({
     nombre: nombreTicketSchema,
