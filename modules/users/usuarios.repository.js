@@ -91,8 +91,31 @@ async function listUsers(payload = {}) {
   }
 }
 
+async function getUserById(id_usuario) {
+  try {
+    const user = await userModel.findByPk(id_usuario);
+    return user;
+  } catch (error) {
+    logger.error(
+      {
+        event: "repository_get_user_by_id_error",
+        id_usuario,
+        error: {
+          name: error.name,
+          message: error.message,
+          stack: error.stack,
+        },
+      },
+      "Error en UsuariosRepository.getUserById"
+    );
+
+    throw error;
+  }
+}
+
 module.exports = {
   updateUser,
   deleteUser,
   listUsers,
+  getUserById,
 };

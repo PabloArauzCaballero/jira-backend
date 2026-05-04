@@ -20,13 +20,19 @@
     "pino-http": "^11.0.0",
     "sequelize": "^6.37.8",
     "sha2": "^1.0.2",
-    "zod": "^4.4.1"
+    "zod": "^3.23.0"
   },
   "scripts": {
     "dev": "node server.js",
-    "start": "node server.js"
+    "start": "node server.js",
+    "test": "jest --verbose",
+    "test:watch": "jest --watch --verbose"
   },
   "devDependencies": {
-    "nodemon": "^3.1.14"
+    "@types/jest": "^30.0.0",
+    "jest": "^30.3.0",
+    "nodemon": "^3.1.14",
+    "sqlite3": "^6.0.1",
+    "supertest": "^7.2.2"
   }
 }

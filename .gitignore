@@ -9,3 +9,5 @@ yarn-error.log*
 tmp/
 dist/
 build/
+docs/
+*.md

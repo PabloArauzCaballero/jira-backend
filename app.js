@@ -8,7 +8,6 @@ const logger = require("./logs/logger")
 const app = express();
 const cookieParser = require("cookie-parser");
 const rateLimit = require("express-rate-limit");
-const { success } = require("zod");
 const modules = require("./modules");
 const {requireAuth} = require("./middlewares/jwtMiddleware")
 
@@ -78,6 +77,7 @@ app.use(
     rateLimit({
         windowMs: 15 * 60 * 1000,
         max: 100,
+        skip: (req) => req.path.startsWith("/api/auth"),
         message: {
             success: false,
             message: "Too many requests, please try again later.",
