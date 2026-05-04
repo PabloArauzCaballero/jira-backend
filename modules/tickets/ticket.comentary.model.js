@@ -1,42 +1,38 @@
 const { DataTypes } = require("sequelize");
 
 module.exports = (sequelize) => {
-  const Ticket = sequelize.define(
-    "ticket",
+  const TicketUpdate = sequelize.define(
+    "ticketUpdate",
     {
-      id_ticket: {
+      id_actualizacion: {
         type: DataTypes.BIGINT,
         primaryKey: true,
         autoIncrement: true,
         allowNull: false,
       },
 
-      nombre: {
-        type: DataTypes.STRING(150),
+      id_asignacion: {
+        type: DataTypes.BIGINT,
+        allowNull: false,
+        references: {
+          model: "proyecto_asignacion",
+          key: "id_asignacion",
+        },
+        onUpdate: "CASCADE",
+        onDelete: "RESTRICT",
+      },
+
+      actualizacion: {
+        type: DataTypes.TEXT,
         allowNull: false,
       },
 
-      descripcion: {
-        type: DataTypes.TEXT,
-        allowNull: true,
-      },
-
-      // Sin defaultValue: PostgreSQL aplica DEFAULT 'MEDIA'.
-      prioridad: {
-        type: DataTypes.STRING(30),
-      },
-
-      // Sin defaultValue: PostgreSQL aplica DEFAULT 'PENDIENTE'.
-      status: {
-        type: DataTypes.STRING(30),
-      },
-
-      // Sin defaultValue: PostgreSQL aplica DEFAULT NOW().
+      // Sin defaultValue: PostgreSQL aplica DEFAULT NOW() si existe en el DDL.
       fecha_creacion: {
         type: DataTypes.DATE,
       },
 
-      // Sin defaultValue: PostgreSQL aplica DEFAULT 'ACTIVO'.
+      // Sin defaultValue: PostgreSQL aplica DEFAULT 'ACTIVO' si existe en el DDL.
       estado_registro: {
         type: DataTypes.STRING(20),
       },
@@ -48,13 +44,13 @@ module.exports = (sequelize) => {
 
       user_id_creacion: {
         type: DataTypes.BIGINT,
-        allowNull: true,
+        allowNull: false,
         references: {
           model: "usuarios",
           key: "id_usuario",
         },
         onUpdate: "CASCADE",
-        onDelete: "SET NULL",
+        onDelete: "RESTRICT",
       },
 
       user_id_modificacion: {
@@ -68,49 +64,37 @@ module.exports = (sequelize) => {
         onDelete: "SET NULL",
       },
 
-      // Sin defaultValue: PostgreSQL aplica DEFAULT 1.
+      // Sin defaultValue: PostgreSQL aplica DEFAULT 1 si existe en el DDL.
       version: {
         type: DataTypes.INTEGER,
       },
     },
     {
-      tableName: "ticket",
+      tableName: "ticket_actualizacion",
       freezeTableName: true,
       timestamps: false,
     }
   );
 
-  Ticket.associate = (models) => {
-    Ticket.belongsTo(models.Usuario, {
+  TicketUpdate.associate = (models) => {
+    TicketUpdate.belongsTo(models.ProyectoAsignacion, {
+      foreignKey: "id_asignacion",
+      targetKey: "id_asignacion",
+      as: "asignacion",
+    });
+
+    TicketUpdate.belongsTo(models.Usuario, {
       foreignKey: "user_id_creacion",
       targetKey: "id_usuario",
       as: "usuarioCreacion",
     });
 
-    Ticket.belongsTo(models.Usuario, {
+    TicketUpdate.belongsTo(models.Usuario, {
       foreignKey: "user_id_modificacion",
       targetKey: "id_usuario",
       as: "usuarioModificacion",
     });
-
-    Ticket.hasMany(models.TicketAction, {
-      foreignKey: "id_ticket",
-      sourceKey: "id_ticket",
-      as: "acciones",
-    });
-
-    Ticket.hasMany(models.TicketAcceptanceCriteria, {
-      foreignKey: "id_ticket",
-      sourceKey: "id_ticket",
-      as: "criteriosAceptacion",
-    });
-
-    Ticket.hasMany(models.ProyectoAsignacion, {
-      foreignKey: "id_ticket",
-      sourceKey: "id_ticket",
-      as: "asignaciones",
-    });
   };
 
-  return Ticket;
+  return TicketUpdate;
 };
