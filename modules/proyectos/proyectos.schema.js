@@ -58,24 +58,20 @@ const proyectoUpdateSchema = z
       .min(1, "La descripción no puede estar vacía.")
       .optional(),
 
-    user_id_modificacion: optionalPositiveIntId("El id del usuario modificador"),
+    user_id_modificacion: optionalPositiveIntId("El id del usuario modificador").optional(),
   })
   .strict()
   .refine((data) => Object.keys(data).length > 0, {
     message: "Debe enviar al menos un campo para actualizar el proyecto.",
   });
 
-const idProyectoSchema = z
-  .object({
+const idProyectoSchema = z.object({
     id_proyecto: positiveIntId("El id del proyecto"),
-  })
-  .strict();
+  });
 
-const idUsuarioParamSchema = z
-  .object({
+const idUsuarioParamSchema = z.object({
     id_usuario: positiveIntId("El id del usuario"),
-  })
-  .strict();
+  });
 
 const miembroCreationSchema = z
   .object({

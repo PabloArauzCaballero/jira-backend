@@ -118,7 +118,7 @@ const ticketCreationSchema = z
 const ticketUpdateSchema = z
   .object({
     nombre: nombreTicketSchema.optional(),
-    descripcion: optionalText("La descripción"),
+    descripcion: optionalText("La descripción").optional(),
     prioridad: prioridadSchema.optional(),
     tasks: tasksSchema.optional(),
     acceptanceCriteria: acceptanceCriteriaSchema.optional(),
