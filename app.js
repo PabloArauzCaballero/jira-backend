@@ -48,10 +48,10 @@ app.use(
 );
 
 // CORS ======================================================================
-const allowedOrigins = [
-    "http://localhost:5173/",
-    "https://jira-frontend.a2020115468.workers.dev/", 
-];
+const allowedOrigins = (process.env.CORS_ORIGINS || "")
+    .split(",")
+    .map((origin) => origin.trim())
+    .filter(Boolean);
 
 app.use(
     cors({
