@@ -1,10 +1,13 @@
 const AuthService = require("./auth.service");
 const loginSchema = require("./auth.schema");
-const {usuariosCreationSchema} =  require("../users/usuarios.schema");
-const { generateAccessToken } = require("../../core/jwt/jwt");
+const { usuariosCreationSchema } = require("../users/usuarios.schema");
+const {
+  generateAccessToken,
+  generateRefreshToken,
+} = require("../../core/jwt/jwt");
 const mainLogger = require("../../logs/logger");
 const logger = mainLogger.child({ module: "AuthController" });
-const {getRequestMeta} = require("../../utils/loggerFunctions")
+const { getRequestMeta } = require("../../utils/loggerFunctions");
 
 function getAccessTokenCookieOptions() {
   return {
@@ -16,6 +19,28 @@ function getAccessTokenCookieOptions() {
   };
 }
 
+function getRefreshTokenCookieOptions() {
+  return {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+    path: "/",
+  };
+}
+
+function clearAuthCookies(res) {
+  const baseOptions = {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+  };
+
+  res.clearCookie("access_token", baseOptions);
+  res.clearCookie("refresh_token", baseOptions);
+}
+
 async function login(req, res) {
   const startedAt = Date.now();
 
@@ -23,16 +48,6 @@ async function login(req, res) {
     const validationResult = loginSchema.safeParse(req.body);
 
     if (!validationResult.success) {
-      logger.warn(
-        {
-          event: "auth_login_validation_failed",
-          ...getRequestMeta(req),
-          durationMs: Date.now() - startedAt,
-          validationErrors: validationResult.error.flatten(),
-        },
-        "Validación fallida en login"
-      );
-
       return res.status(400).json({
         success: false,
         message: "Datos de login inválidos.",
@@ -40,32 +55,9 @@ async function login(req, res) {
       });
     }
 
-    const { email } = validationResult.data;
-
-    logger.info(
-      {
-        event: "auth_login_attempt",
-        ...getRequestMeta(req),
-        email,
-      },
-      "Intento de login"
-    );
-
     const result = await AuthService.login(validationResult.data);
 
     if (!result.success) {
-      logger.warn(
-        {
-          event: "auth_login_failed",
-          ...getRequestMeta(req),
-          email,
-          statusCode: result.statusCode || 401,
-          reason: result.message,
-          durationMs: Date.now() - startedAt,
-        },
-        "Login fallido"
-      );
-
       return res.status(result.statusCode || 401).json({
         success: false,
         message: result.message,
@@ -73,8 +65,10 @@ async function login(req, res) {
     }
 
     const accessToken = generateAccessToken(result.data);
+    const refreshToken = generateRefreshToken(result.data);
 
     res.cookie("access_token", accessToken, getAccessTokenCookieOptions());
+    res.cookie("refresh_token", refreshToken, getRefreshTokenCookieOptions());
 
     logger.info(
       {
@@ -122,12 +116,7 @@ async function logout(req, res) {
   const startedAt = Date.now();
 
   try {
-    res.clearCookie("access_token", {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      path: "/",
-    });
+    clearAuthCookies(res);
 
     logger.info(
       {
@@ -173,16 +162,6 @@ async function signup(req, res) {
     const validationResult = usuariosCreationSchema.safeParse(req.body);
 
     if (!validationResult.success) {
-      logger.warn(
-        {
-          event: "auth_signup_validation_failed",
-          ...getRequestMeta(req),
-          durationMs: Date.now() - startedAt,
-          validationErrors: validationResult.error.flatten(),
-        },
-        "Validación fallida en signup"
-      );
-
       return res.status(400).json({
         success: false,
         message: "Datos de signup inválidos.",
@@ -190,32 +169,9 @@ async function signup(req, res) {
       });
     }
 
-    const { email } = validationResult.data;
-
-    logger.info(
-      {
-        event: "auth_signup_attempt",
-        ...getRequestMeta(req),
-        email,
-      },
-      "Intento de signup"
-    );
-
     const result = await AuthService.signup(validationResult.data);
 
     if (!result.success) {
-      logger.warn(
-        {
-          event: "auth_signup_failed",
-          ...getRequestMeta(req),
-          email,
-          statusCode: result.statusCode || 400,
-          reason: result.message,
-          durationMs: Date.now() - startedAt,
-        },
-        "Signup fallido"
-      );
-
       return res.status(result.statusCode || 400).json({
         success: false,
         message: result.message,
@@ -236,7 +192,9 @@ async function signup(req, res) {
     return res.status(201).json({
       success: true,
       message: result.message,
-      data: result.data,
+      data: {
+        user: result.data,
+      },
     });
   } catch (error) {
     logger.error(
@@ -260,8 +218,128 @@ async function signup(req, res) {
   }
 }
 
+async function me(req, res) {
+  const startedAt = Date.now();
+
+  try {
+    const id_usuario = req.user?.id_usuario;
+
+    if (!id_usuario) {
+      return res.status(401).json({
+        success: false,
+        message: "No autorizado. Usuario no encontrado en el token.",
+      });
+    }
+
+    const result = await AuthService.me(id_usuario);
+
+    if (!result.success) {
+      return res.status(result.statusCode || 400).json({
+        success: false,
+        message: result.message,
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Sesión obtenida correctamente.",
+      data: {
+        user: result.data,
+      },
+    });
+  } catch (error) {
+    logger.error(
+      {
+        event: "auth_me_controller_error",
+        ...getRequestMeta(req),
+        durationMs: Date.now() - startedAt,
+        error: {
+          name: error.name,
+          message: error.message,
+          stack: error.stack,
+        },
+      },
+      "Error interno en AuthController.me"
+    );
+
+    return res.status(500).json({
+      success: false,
+      message: "Error interno al obtener la sesión.",
+    });
+  }
+}
+
+async function refreshSession(req, res) {
+  const startedAt = Date.now();
+
+  try {
+    const refreshToken = req.cookies?.refresh_token;
+
+    const result = await AuthService.refreshSession(refreshToken);
+
+    if (!result.success) {
+      clearAuthCookies(res);
+
+      return res.status(result.statusCode || 401).json({
+        success: false,
+        message: result.message,
+      });
+    }
+
+    const newAccessToken = generateAccessToken(result.data);
+    const newRefreshToken = generateRefreshToken(result.data);
+
+    res.cookie("access_token", newAccessToken, getAccessTokenCookieOptions());
+    res.cookie("refresh_token", newRefreshToken, getRefreshTokenCookieOptions());
+
+    logger.info(
+      {
+        event: "auth_refresh_session_success",
+        ...getRequestMeta(req),
+        userId: result.data.id_usuario,
+        email: result.data.email,
+        durationMs: Date.now() - startedAt,
+      },
+      "Sesión refrescada correctamente"
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Sesión refrescada correctamente.",
+      data: {
+        user: result.data,
+        accessToken: newAccessToken,
+        tokenType: "Bearer",
+      },
+    });
+  } catch (error) {
+    clearAuthCookies(res);
+
+    logger.error(
+      {
+        event: "auth_refresh_session_controller_error",
+        ...getRequestMeta(req),
+        durationMs: Date.now() - startedAt,
+        error: {
+          name: error.name,
+          message: error.message,
+          stack: error.stack,
+        },
+      },
+      "Error interno en AuthController.refreshSession"
+    );
+
+    return res.status(500).json({
+      success: false,
+      message: "Error interno al refrescar la sesión.",
+    });
+  }
+}
+
 module.exports = {
   login,
   logout,
   signup,
+  me,
+  refreshSession,
 };

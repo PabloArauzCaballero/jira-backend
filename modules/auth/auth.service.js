@@ -1,6 +1,7 @@
 const crypto = require("crypto");
 const AuthRepository = require("./auth.repository");
 const sha2 = require("../../core/sha2/sha2");
+const { verifyRefreshToken } = require("../../core/jwt/jwt");
 const mainLogger = require("../../logs/logger");
 
 const logger = mainLogger.child({ module: "AuthService" });
@@ -16,6 +17,8 @@ function toPlainUser(user) {
 }
 
 function removeSensitiveFields(user) {
+  if (!user) return null;
+
   const safeUser = { ...user };
 
   delete safeUser.password;
@@ -96,14 +99,6 @@ async function signup(payload) {
     const userInstance = await AuthRepository.getUserByEmail(payload.email);
 
     if (userInstance) {
-      logger.warn(
-        {
-          event: "auth_signup_user_already_exists",
-          email: payload.email,
-        },
-        "Intento de signup con usuario existente"
-      );
-
       return {
         success: false,
         statusCode: 409,
@@ -121,14 +116,6 @@ async function signup(payload) {
     const newUserInstance = await AuthRepository.createUser(normPayload);
 
     if (!newUserInstance) {
-      logger.error(
-        {
-          event: "auth_signup_empty_repository_result",
-          email: payload.email,
-        },
-        "AuthRepository.createUser no devolvió usuario"
-      );
-
       return {
         success: false,
         statusCode: 500,
@@ -136,17 +123,7 @@ async function signup(payload) {
       };
     }
 
-    const newUser = toPlainUser(newUserInstance);
-    const safeUser = removeSensitiveFields(newUser);
-
-    logger.info(
-      {
-        event: "auth_signup_success",
-        userId: safeUser.id_usuario,
-        email: safeUser.email,
-      },
-      "Usuario creado correctamente"
-    );
+    const safeUser = removeSensitiveFields(toPlainUser(newUserInstance));
 
     return {
       success: true,
@@ -176,7 +153,111 @@ async function signup(payload) {
   }
 }
 
+async function me(id_usuario) {
+  try {
+    const userInstance = await AuthRepository.getUserById(id_usuario);
+
+    if (!userInstance) {
+      return {
+        success: false,
+        statusCode: 404,
+        message: "Usuario no encontrado.",
+      };
+    }
+
+    const safeUser = removeSensitiveFields(toPlainUser(userInstance));
+
+    return {
+      success: true,
+      statusCode: 200,
+      message: "Usuario autenticado obtenido correctamente.",
+      data: safeUser,
+    };
+  } catch (error) {
+    logger.error(
+      {
+        event: "auth_me_error",
+        id_usuario,
+        error: {
+          name: error.name,
+          message: error.message,
+          stack: error.stack,
+        },
+      },
+      "Error en AuthService.me"
+    );
+
+    return {
+      success: false,
+      statusCode: 500,
+      message: "Error interno al obtener la sesión.",
+    };
+  }
+}
+
+async function refreshSession(refreshToken) {
+  try {
+    if (!refreshToken) {
+      return {
+        success: false,
+        statusCode: 401,
+        message: "Refresh token no proporcionado.",
+      };
+    }
+
+    const decoded = verifyRefreshToken(refreshToken);
+
+    if (decoded.tokenUse !== "refresh") {
+      return {
+        success: false,
+        statusCode: 401,
+        message: "Token de refresh inválido.",
+      };
+    }
+
+    const id_usuario = decoded.sub || decoded.id_usuario;
+
+    const userInstance = await AuthRepository.getUserById(id_usuario);
+
+    if (!userInstance) {
+      return {
+        success: false,
+        statusCode: 404,
+        message: "Usuario no encontrado.",
+      };
+    }
+
+    const safeUser = removeSensitiveFields(toPlainUser(userInstance));
+
+    return {
+      success: true,
+      statusCode: 200,
+      message: "Sesión refrescada correctamente.",
+      data: safeUser,
+    };
+  } catch (error) {
+    logger.warn(
+      {
+        event: "auth_refresh_session_error",
+        error: {
+          name: error.name,
+          message: error.message,
+        },
+      },
+      "Refresh session fallido"
+    );
+
+    return {
+      success: false,
+      statusCode: 401,
+      message: "Refresh token inválido o expirado.",
+    };
+  }
+}
+
 module.exports = {
   login,
   signup,
+  me,
+  refreshSession,
 };

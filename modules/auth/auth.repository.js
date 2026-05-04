@@ -1,4 +1,4 @@
-const {sequelize} = require("../../core/db/config")
+const { sequelize } = require("../../core/db/config");
 const userModel = require("../users/usuarios.model")(sequelize);
 const mainLogger = require("../../logs/logger");
 
@@ -23,6 +23,29 @@ async function getUserByEmail(email) {
         },
       },
       "Error en AuthRepository.getUserByEmail"
+    );
+
+    throw error;
+  }
+}
+
+async function getUserById(id_usuario) {
+  try {
+    const user = await userModel.findByPk(id_usuario);
+
+    return user;
+  } catch (error) {
+    logger.error(
+      {
+        event: "auth_get_user_by_id_error",
+        id_usuario,
+        error: {
+          name: error.name,
+          message: error.message,
+          stack: error.stack,
+        },
+      },
+      "Error en AuthRepository.getUserById"
     );
 
     throw error;
@@ -54,5 +77,6 @@ async function createUser(payload) {
 
 module.exports = {
   getUserByEmail,
+  getUserById,
   createUser,
 };
