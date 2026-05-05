@@ -2,9 +2,11 @@ const TicketsRepository = require("./tickets.repository");
 const ProyectosRepository = require("../proyectos/proyectos.repository");
 
 const TRANSICIONES_PERMITIDAS = {
-  PENDIENTE: ["EN_PROGRESO"],
-  EN_PROGRESO: ["PENDIENTE", "COMPLETADO"],
-  COMPLETADO: ["EN_PROGRESO"],
+  PENDIENTE: ["EN_PROGRESO", "CANCELADO"],
+  EN_PROGRESO: ["PENDIENTE", "EN_REVISION", "CANCELADO"],
+  EN_REVISION: ["EN_PROGRESO", "FINALIZADO", "CANCELADO"],
+  FINALIZADO: ["EN_REVISION"],
+  CANCELADO: ["PENDIENTE"],
 };
 
 function sameId(left, right) {
